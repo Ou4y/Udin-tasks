@@ -1,1 +1,6 @@
 /.DS_Store
+udin-tasks/.DS_Store
+udin-tasks/task2-multiuser/.DS_Store
+node_modules
+udin-tasks/task2-multiuser/backend/node_modules/.bin/semver
+**/.DS_Store
