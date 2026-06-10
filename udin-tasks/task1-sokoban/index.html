@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sokoban</title>
+  <style>
+    :root {
+      --wall: #2d3748;
+      --floor: #f4ead8;
+      --target: #e9c46a;
+      --box: #b7791f;
+      --box-side: #8a5a16;
+      --box-done: #38a169;
+      --player: #3182ce;
+      --text: #1a202c;
+      --panel: #ffffff;
+      --border: #cbd5e0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #edf2f7;
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    main {
+      width: min(92vw, 680px);
+      padding: 24px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 16px 36px rgba(26, 32, 44, 0.14);
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.6rem, 4vw, 2.25rem);
+      line-height: 1.1;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .moves {
+      min-width: 92px;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #f7fafc;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    button {
+      border: 0;
+      border-radius: 6px;
+      padding: 10px 14px;
+      background: #2b6cb0;
+      color: #ffffff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #2c5282;
+    }
+
+    button:focus-visible {
+      outline: 3px solid #90cdf4;
+      outline-offset: 2px;
+    }
+
+    #message {
+      min-height: 28px;
+      margin: 0 0 16px;
+      color: #2f855a;
+      font-size: 1.05rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    #board {
+      display: grid;
+      gap: 4px;
+      width: fit-content;
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 8px;
+      background: #a0aec0;
+      border: 4px solid #4a5568;
+      border-radius: 8px;
+      overflow: auto;
+    }
+
+    .cell {
+      position: relative;
+      width: clamp(36px, 9vw, 56px);
+      aspect-ratio: 1;
+      border-radius: 5px;
+      background: var(--floor);
+    }
+
+    .wall {
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.08) 25%, transparent 25%) 0 0 / 18px 18px,
+        linear-gradient(135deg, transparent 75%, rgba(0, 0, 0, 0.16) 75%) 0 0 / 18px 18px,
+        var(--wall);
+      box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.12);
+    }
+
+    .target::before {
+      content: "";
+      position: absolute;
+      inset: 25%;
+      border: 4px solid var(--target);
+      border-radius: 50%;
+      background: rgba(233, 196, 106, 0.24);
+    }
+
+    .box,
+    .player {
+      position: absolute;
+      inset: 12%;
+      display: grid;
+      place-items: center;
+    }
+
+    .box {
+      border-radius: 5px;
+      background: var(--box);
+      border: 3px solid var(--box-side);
+      box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.16);
+    }
+
+    .box::after {
+      content: "";
+      width: 48%;
+      height: 48%;
+      border: 3px solid rgba(255, 255, 255, 0.36);
+      border-radius: 3px;
+    }
+
+    .box.on-target {
+      background: var(--box-done);
+      border-color: #276749;
+    }
+
+    .player {
+      border-radius: 50%;
+      background: var(--player);
+      border: 3px solid #2a4365;
+      box-shadow: inset 0 7px 0 rgba(255, 255, 255, 0.22);
+    }
+
+    @media (max-width: 520px) {
+      main {
+        padding: 18px;
+      }
+
+      header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .status {
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Sokoban</h1>
+      <div class="status">
+        <div class="moves">Moves: <span id="moves">0</span></div>
+        <button id="restart" type="button">Restart</button>
+      </div>
+    </header>
+
+    <p id="message" aria-live="polite"></p>
+    <div id="board" aria-label="Sokoban board"></div>
+  </main>
+
+  <script>
+    const TILE = {
+      WALL: "#",
+      FLOOR: " ",
+      TARGET: ".",
+      BOX: "$",
+      BOX_ON_TARGET: "*",
+      PLAYER: "@",
+      PLAYER_ON_TARGET: "+"
+    };
+
+    const START_LEVEL = [
+      [TILE.WALL, TILE.WALL, TILE.WALL, TILE.WALL, TILE.WALL, TILE.WALL, TILE.WALL, TILE.WALL, TILE.WALL, TILE.WALL],
+      [TILE.WALL, TILE.FLOOR, TILE.FLOOR, TILE.FLOOR, TILE.FLOOR, TILE.FLOOR, TILE.FLOOR, TILE.FLOOR, TILE.FLOOR, TILE.WALL],
+      [TILE.WALL, TILE.FLOOR, TILE.FLOOR, TILE.TARGET, TILE.FLOOR, TILE.TARGET, TILE.FLOOR, TILE.TARGET, TILE.FLOOR, TILE.WALL],
+      [TILE.WALL, TILE.FLOOR, TILE.FLOOR, TILE.BOX, TILE.FLOOR, TILE.BOX, TILE.FLOOR, TILE.BOX, TILE.FLOOR, TILE.WALL],
+      [TILE.WALL, TILE.FLOOR, TILE.FLOOR, TILE.FLOOR, TILE.FLOOR, TILE.FLOOR, TILE.FLOOR, TILE.PLAYER, TILE.FLOOR, TILE.WALL],
+      [TILE.WALL, TILE.WALL, TILE.WALL, TILE.WALL, TILE.WALL, TILE.WALL, TILE.WALL, TILE.WALL, TILE.WALL, TILE.WALL]
+    ];
+
+    const DIRECTIONS = {
+      ArrowUp: { row: -1, col: 0 },
+      ArrowDown: { row: 1, col: 0 },
+      ArrowLeft: { row: 0, col: -1 },
+      ArrowRight: { row: 0, col: 1 }
+    };
+
+    const boardElement = document.getElementById("board");
+    const movesElement = document.getElementById("moves");
+    const messageElement = document.getElementById("message");
+    const restartButton = document.getElementById("restart");
+
+    let level = [];
+    let playerPosition = { row: 0, col: 0 };
+    let moves = 0;
+    let hasWon = false;
+
+    function resetGame() {
+      level = START_LEVEL.map((row) => [...row]);
+      playerPosition = findPlayer();
+      moves = 0;
+      hasWon = false;
+      messageElement.textContent = "";
+      renderBoard();
+    }
+
+    function findPlayer() {
+      for (let row = 0; row < level.length; row += 1) {
+        for (let col = 0; col < level[row].length; col += 1) {
+          if (level[row][col] === TILE.PLAYER || level[row][col] === TILE.PLAYER_ON_TARGET) {
+            return { row, col };
+          }
+        }
+      }
+
+      return { row: 0, col: 0 };
+    }
+
+    function renderBoard() {
+      boardElement.innerHTML = "";
+      boardElement.style.gridTemplateColumns = `repeat(${level[0].length}, clamp(36px, 9vw, 56px))`;
+      movesElement.textContent = moves;
+
+      level.forEach((row) => {
+        row.forEach((tile) => {
+          const cell = document.createElement("div");
+          cell.className = "cell";
+
+          if (tile === TILE.WALL) {
+            cell.classList.add("wall");
+          }
+
+          if (tile === TILE.TARGET || tile === TILE.BOX_ON_TARGET || tile === TILE.PLAYER_ON_TARGET) {
+            cell.classList.add("target");
+          }
+
+          if (tile === TILE.BOX || tile === TILE.BOX_ON_TARGET) {
+            const box = document.createElement("div");
+            box.className = tile === TILE.BOX_ON_TARGET ? "box on-target" : "box";
+            cell.appendChild(box);
+          }
+
+          if (tile === TILE.PLAYER || tile === TILE.PLAYER_ON_TARGET) {
+            const player = document.createElement("div");
+            player.className = "player";
+            cell.appendChild(player);
+          }
+
+          boardElement.appendChild(cell);
+        });
+      });
+    }
+
+    function getTile(row, col) {
+      if (!level[row] || !level[row][col]) {
+        return TILE.WALL;
+      }
+
+      return level[row][col];
+    }
+
+    function isOpenTile(tile) {
+      return tile === TILE.FLOOR || tile === TILE.TARGET;
+    }
+
+    function isBox(tile) {
+      return tile === TILE.BOX || tile === TILE.BOX_ON_TARGET;
+    }
+
+    function removePlayerFrom(tile) {
+      return tile === TILE.PLAYER_ON_TARGET ? TILE.TARGET : TILE.FLOOR;
+    }
+
+    function addPlayerTo(tile) {
+      return tile === TILE.TARGET ? TILE.PLAYER_ON_TARGET : TILE.PLAYER;
+    }
+
+    function removeBoxFrom(tile) {
+      return tile === TILE.BOX_ON_TARGET ? TILE.TARGET : TILE.FLOOR;
+    }
+
+    function addBoxTo(tile) {
+      return tile === TILE.TARGET ? TILE.BOX_ON_TARGET : TILE.BOX;
+    }
+
+    function movePlayer(rowDelta, colDelta) {
+      if (hasWon) {
+        return;
+      }
+
+      const currentRow = playerPosition.row;
+      const currentCol = playerPosition.col;
+      const nextRow = currentRow + rowDelta;
+      const nextCol = currentCol + colDelta;
+      const nextTile = getTile(nextRow, nextCol);
+
+      // Movement logic: the player can step only onto floor or target cells.
+      if (isOpenTile(nextTile)) {
+        level[currentRow][currentCol] = removePlayerFrom(level[currentRow][currentCol]);
+        level[nextRow][nextCol] = addPlayerTo(nextTile);
+        playerPosition = { row: nextRow, col: nextCol };
+        finishTurn();
+        return;
+      }
+
+      // Push logic: boxes move only when pushed into an empty floor or target cell.
+      if (isBox(nextTile)) {
+        const boxRow = nextRow + rowDelta;
+        const boxCol = nextCol + colDelta;
+        const boxDestination = getTile(boxRow, boxCol);
+
+        if (!isOpenTile(boxDestination)) {
+          return;
+        }
+
+        level[boxRow][boxCol] = addBoxTo(boxDestination);
+        level[nextRow][nextCol] = addPlayerTo(removeBoxFrom(nextTile));
+        level[currentRow][currentCol] = removePlayerFrom(level[currentRow][currentCol]);
+        playerPosition = { row: nextRow, col: nextCol };
+        finishTurn();
+      }
+    }
+
+    function finishTurn() {
+      moves += 1;
+      renderBoard();
+      checkWin();
+    }
+
+    function checkWin() {
+      // Win logic: every target must be covered by a box.
+      const allTargetsCovered = level.every((row) =>
+        row.every((tile) => tile !== TILE.TARGET && tile !== TILE.PLAYER_ON_TARGET)
+      );
+
+      if (allTargetsCovered) {
+        hasWon = true;
+        messageElement.textContent = `You solved it in ${moves} moves.`;
+      }
+    }
+
+    document.addEventListener("keydown", (event) => {
+      const direction = DIRECTIONS[event.key];
+
+      if (!direction) {
+        return;
+      }
+
+      event.preventDefault();
+      movePlayer(direction.row, direction.col);
+    });
+
+    restartButton.addEventListener("click", resetGame);
+
+    resetGame();
+  </script>
+</body>
+</html>
