@@ -20,57 +20,78 @@ Output only the final code for index.html.
 -------------------------------
 
 task-2-prompt-1
-Inside task2-multiuser/backend, build an Express + MySQL backend for a multi-user Sokoban platform.
+Build the Docker Compose and backend only for Task 2.
 
-Use:
-
-* Node.js
-* Express
-* mysql2/promise
-* bcrypt
-* express-session
-* cors
-* dotenv
+Project location:
+`task2-multiuser/`
 
 Create:
 
-* server.js
-* db.js
-* schema.sql
-* .env.example
-* package.json scripts: dev and start
+task2-multiuser/
+├── backend/
+│   ├── server.js
+│   ├── db.js
+│   ├── schema.sql
+│   ├── .env.example
+│   └── package.json
+└── docker-compose.yml
+
+Use:
+- Express
+- mysql2/promise
+- bcrypt
+- express-session
+- cors
+- dotenv
+- MySQL 8 through Docker Compose
+
+Docker Compose:
+- Service name: mysql
+- Container name: `udin-sokoban-db`
+- Image: mysql:8
+- MYSQL_ROOT_PASSWORD: root
+- MYSQL_DATABASE: sokoban
+- Ports: `3306:3306`
+- Named volume for persistence
+
+Backend:
+- Runs on port 4000.
+- Connects to MySQL through environment variables.
+- Uses session-based auth.
+- Uses JSON responses.
 
 Database tables:
+- users: id, username unique, password_hash, role enum player/admin, created_at
+- levels: id, name, grid_data JSON, created_by, created_at
+- scores: id, user_id, level_id, moves, completed_at
 
-* users: id, username, password_hash, role, created_at
-* levels: id, name, grid_data JSON, created_by, created_at
-* scores: id, user_id, level_id, moves, completed_at
-
-Roles:
-
-* Anonymous: can view levels and leaderboard only
-* Player: can play and submit scores
-* Admin: can create levels and also play
+Seed data:
+- Admin user:
+  - username: admin
+  - password: admin123
+- One default playable Sokoban level.
 
 Endpoints:
+- POST /api/register
+- POST /api/login
+- POST /api/logout
+- GET /api/me
+- GET /api/levels
+- POST /api/levels admin only
+- POST /api/scores player/admin only
+- GET /api/leaderboard
 
-* POST /api/register
-* POST /api/login
-* POST /api/logout
-* GET /api/me
-* GET /api/levels
-* POST /api/levels admin only
-* POST /api/scores player/admin only
-* GET /api/leaderboard
+Role rules:
+- Anonymous: view levels and leaderboard only.
+- Player: play and submit scores.
+- Admin: create levels and play.
 
-Rules:
+Add:
+- Request validation.
+- bcrypt password hashing.
+- role-check middleware.
+- clear JSON error messages.
+- comments explaining auth, roles, and leaderboard logic.
+- package.json scripts: dev and start.
 
-* Hash passwords with bcrypt.
-* Use session-based authentication.
-* Validate request bodies.
-* Return clear JSON errors.
-* Seed one admin user: username admin, password admin123.
-* Seed one playable Sokoban level.
-* Add comments explaining auth, roles, and leaderboard query.
-
-Keep the implementation simple, reliable, and easy to demo.
+Keep code simple, reliable, and demo-ready.
