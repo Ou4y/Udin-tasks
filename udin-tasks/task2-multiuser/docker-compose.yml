@@ -1,0 +1,15 @@
+services:
+  mysql:
+    image: mysql:8
+    container_name: udin-sokoban-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: sokoban
+    ports:
+      - "3306:3306"
+    volumes:
+      - sokoban_mysql_data:/var/lib/mysql
+
+volumes:
+  sokoban_mysql_data:

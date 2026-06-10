@@ -25,7 +25,7 @@ const DEFAULT_LEVEL = [
 
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || true,
+    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
     credentials: true
   })
 );
@@ -39,7 +39,7 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      sameSite: process.env.COOKIE_SAMESITE || "lax",
+      sameSite: "lax",
       secure: process.env.COOKIE_SECURE === "true"
     }
   })
@@ -54,7 +54,7 @@ function sendError(res, status, message, details) {
   });
 }
 
-function publicUser(user) {
+function toPublicUser(user) {
   return {
     id: user.id,
     username: user.username,
@@ -82,20 +82,20 @@ function getObjectBody(req) {
   return req.body;
 }
 
-function validateUsername(username) {
+function isValidUsername(username) {
   return typeof username === "string" && /^[a-zA-Z0-9_]{3,30}$/.test(username);
 }
 
-function validatePassword(password) {
+function isValidPassword(password) {
   return typeof password === "string" && password.length >= 6 && password.length <= 100;
 }
 
-function validateLevelName(name) {
-  return typeof name === "string" && name.trim().length >= 1 && name.trim().length <= 120;
+function isPositiveInteger(value) {
+  return Number.isInteger(value) && value > 0;
 }
 
-function validatePositiveInteger(value) {
-  return Number.isInteger(value) && value > 0;
+function validateLevelName(name) {
+  return typeof name === "string" && name.trim().length > 0 && name.trim().length <= 120;
 }
 
 function validateGridData(gridData) {
@@ -108,10 +108,10 @@ function validateGridData(gridData) {
     return "grid_data rows must be 1 to 100 characters wide.";
   }
 
+  const allowedCells = new Set(["#", " ", ".", "$", "@", "+", "*"]);
   let players = 0;
   let boxes = 0;
   let goals = 0;
-  const allowedCells = new Set(["#", " ", ".", "$", "@", "+", "*"]);
 
   for (const row of gridData) {
     if (typeof row !== "string" || row.length !== width) {
@@ -148,9 +148,9 @@ function validateGridData(gridData) {
   return null;
 }
 
-// Authentication is session-based: after login/register we store a small user
-// object on req.session, and protected routes read that session on later calls.
-function requireAuthenticated(req, res, next) {
+// Auth is session-based. After register/login, a small public user object is
+// stored in req.session.user and reused by later requests with the session cookie.
+function requireAuth(req, res, next) {
   if (!req.session.user) {
     return sendError(res, 401, "Authentication required.");
   }
@@ -158,15 +158,15 @@ function requireAuthenticated(req, res, next) {
   return next();
 }
 
-// Roles are enforced at the route boundary. Anonymous users have no session,
-// players can submit scores, and admins can create levels plus play.
-function requireRole(...roles) {
+// Role checks live at the route boundary. Anonymous users have no session,
+// players can submit scores, and admins can create levels plus submit scores.
+function requireRole(...allowedRoles) {
   return (req, res, next) => {
     if (!req.session.user) {
       return sendError(res, 401, "Authentication required.");
     }
 
-    if (!roles.includes(req.session.user.role)) {
+    if (!allowedRoles.includes(req.session.user.role)) {
       return sendError(res, 403, "You do not have permission to perform this action.");
     }
 
@@ -182,11 +182,10 @@ app.post("/api/register", async (req, res, next) => {
     }
 
     const { username, password } = body;
-
-    if (!validateUsername(username)) {
+    if (!isValidUsername(username)) {
       return sendError(res, 400, "Username must be 3-30 characters and use only letters, numbers, or underscores.");
     }
-    if (!validatePassword(password)) {
+    if (!isValidPassword(password)) {
       return sendError(res, 400, "Password must be 6-100 characters.");
     }
 
@@ -221,8 +220,7 @@ app.post("/api/login", async (req, res, next) => {
     }
 
     const { username, password } = body;
-
-    if (!validateUsername(username) || !validatePassword(password)) {
+    if (!isValidUsername(username) || !isValidPassword(password)) {
       return sendError(res, 400, "Valid username and password are required.");
     }
 
@@ -230,33 +228,33 @@ app.post("/api/login", async (req, res, next) => {
       "SELECT id, username, password_hash, role FROM users WHERE username = ?",
       [username]
     );
-    const dbUser = rows[0];
+    const user = rows[0];
 
-    if (!dbUser) {
+    if (!user) {
       return sendError(res, 401, "Invalid username or password.");
     }
 
-    const passwordMatches = await bcrypt.compare(password, dbUser.password_hash);
+    const passwordMatches = await bcrypt.compare(password, user.password_hash);
     if (!passwordMatches) {
       return sendError(res, 401, "Invalid username or password.");
     }
 
-    const user = publicUser(dbUser);
+    const publicUser = toPublicUser(user);
 
     req.session.regenerate((error) => {
       if (error) {
         return next(error);
       }
 
-      req.session.user = user;
-      return res.json({ user });
+      req.session.user = publicUser;
+      return res.json({ user: publicUser });
     });
   } catch (error) {
     return next(error);
   }
 });
 
-app.post("/api/logout", requireAuthenticated, (req, res, next) => {
+app.post("/api/logout", requireAuth, (req, res, next) => {
   req.session.destroy((error) => {
     if (error) {
       return next(error);
@@ -304,7 +302,6 @@ app.post("/api/levels", requireRole("admin"), async (req, res, next) => {
     }
 
     const { name, grid_data: gridData } = body;
-
     if (!validateLevelName(name)) {
       return sendError(res, 400, "Level name is required and must be 120 characters or less.");
     }
@@ -347,11 +344,10 @@ app.post("/api/scores", requireRole("player", "admin"), async (req, res, next) =
     }
 
     const { level_id: levelId, moves } = body;
-
-    if (!validatePositiveInteger(levelId)) {
+    if (!isPositiveInteger(levelId)) {
       return sendError(res, 400, "level_id must be a positive integer.");
     }
-    if (!validatePositiveInteger(moves)) {
+    if (!isPositiveInteger(moves)) {
       return sendError(res, 400, "moves must be a positive integer.");
     }
 
@@ -380,9 +376,9 @@ app.post("/api/scores", requireRole("player", "admin"), async (req, res, next) =
 
 app.get("/api/leaderboard", async (_req, res, next) => {
   try {
-    // Leaderboard shows each user's best score per level. The NOT EXISTS
-    // clause removes any score that has a better move count, or the same move
-    // count submitted earlier, so only the best row remains for each pair.
+    // Leaderboard logic: return each user's best score per level. A score is
+    // hidden if the same user has a lower move count for that level, or an
+    // equal move count submitted earlier.
     const [rows] = await pool.execute(
       `SELECT
         scores.id,
@@ -464,10 +460,34 @@ async function ensureSeedData() {
   }
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function initializeDatabaseWithRetry() {
+  const maxAttempts = Number(process.env.DB_STARTUP_ATTEMPTS || 30);
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await ensureDatabase();
+      await runSchema();
+      await ensureSeedData();
+      return;
+    } catch (error) {
+      if (attempt === maxAttempts) {
+        throw error;
+      }
+
+      console.log(`Waiting for MySQL to be ready (${attempt}/${maxAttempts})...`);
+      await sleep(1000);
+    }
+  }
+}
+
 async function start() {
-  await ensureDatabase();
-  await runSchema();
-  await ensureSeedData();
+  await initializeDatabaseWithRetry();
 
   app.listen(port, () => {
     console.log(`Sokoban backend listening on http://localhost:${port}`);
