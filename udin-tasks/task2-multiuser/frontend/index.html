@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multiuser Sokoban</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <h1>Multiuser Sokoban</h1>
+      </div>
+      <button id="refresh-button" type="button">Refresh</button>
+    </header>
+
+    <p id="message" class="message" role="status" aria-live="polite"></p>
+
+    <section class="section" id="auth-section">
+      <div class="section-header">
+        <h2>Auth</h2>
+        <span id="session-status" class="pill">Checking session</span>
+      </div>
+
+      <div id="anonymous-auth" class="auth-grid">
+        <form id="register-form">
+          <h3>Register</h3>
+          <label>
+            Username
+            <input name="username" autocomplete="username" required minlength="3" maxlength="30">
+          </label>
+          <label>
+            Password
+            <input name="password" type="password" autocomplete="new-password" required minlength="6" maxlength="100">
+          </label>
+          <button type="submit">Register</button>
+        </form>
+
+        <form id="login-form">
+          <h3>Login</h3>
+          <label>
+            Username
+            <input name="username" autocomplete="username" required minlength="3" maxlength="30">
+          </label>
+          <label>
+            Password
+            <input name="password" type="password" autocomplete="current-password" required minlength="6" maxlength="100">
+          </label>
+          <button type="submit">Login</button>
+        </form>
+      </div>
+
+      <div id="user-panel" class="user-panel" hidden>
+        <p>
+          Signed in as <strong id="user-name"></strong>
+          <span id="user-role" class="role"></span>
+        </p>
+        <button id="logout-button" type="button">Logout</button>
+      </div>
+    </section>
+
+    <section class="section" id="leaderboard-section">
+      <div class="section-header">
+        <h2>Leaderboard</h2>
+        <button id="leaderboard-refresh" type="button">Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Level</th>
+              <th>Moves</th>
+              <th>Completed</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body">
+            <tr>
+              <td colspan="4">Loading scores...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section" id="levels-section">
+      <div class="section-header">
+        <h2>Levels</h2>
+        <button id="levels-refresh" type="button">Refresh</button>
+      </div>
+      <div id="levels-list" class="levels-list"></div>
+    </section>
+
+    <section class="section" id="game-section">
+      <div class="section-header">
+        <div>
+          <h2>Game</h2>
+          <p id="game-title" class="muted">Select a level.</p>
+        </div>
+        <div class="game-actions">
+          <span class="moves">Moves: <strong id="moves">0</strong></span>
+          <button id="restart-button" type="button" disabled>Restart</button>
+        </div>
+      </div>
+
+      <p id="game-message" class="game-message" aria-live="polite"></p>
+      <div id="board" class="board" aria-label="Sokoban board"></div>
+
+      <div class="dpad" aria-label="Move controls">
+        <button type="button" data-move="up">Up</button>
+        <button type="button" data-move="left">Left</button>
+        <button type="button" data-move="down">Down</button>
+        <button type="button" data-move="right">Right</button>
+      </div>
+    </section>
+
+    <section class="section" id="admin-section" hidden>
+      <div class="section-header">
+        <h2>Admin Panel</h2>
+      </div>
+      <form id="level-form" class="admin-form">
+        <label>
+          Level name
+          <input name="name" required maxlength="120" placeholder="Demo Level">
+        </label>
+        <label>
+          JSON grid
+          <textarea name="grid" rows="8" spellcheck="false" required>[
+  "########",
+  "#      #",
+  "# .$@  #",
+  "#      #",
+  "########"
+]</textarea>
+        </label>
+        <button type="submit">Create Level</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

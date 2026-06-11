@@ -269,6 +269,7 @@ app.get("/api/me", (req, res) => {
   return res.json({ user: req.session.user || null });
 });
 
+// Levels are public so anonymous users can select and play them as guests.
 app.get("/api/levels", async (_req, res, next) => {
   try {
     const [rows] = await pool.execute(
@@ -294,6 +295,7 @@ app.get("/api/levels", async (_req, res, next) => {
   }
 });
 
+// Admin-only level creation remains protected at the route boundary.
 app.post("/api/levels", requireRole("admin"), async (req, res, next) => {
   try {
     const body = getObjectBody(req);
@@ -336,6 +338,8 @@ app.post("/api/levels", requireRole("admin"), async (req, res, next) => {
   }
 });
 
+// Score saving requires login. Guests can complete levels client-side, but
+// anonymous POST /api/scores requests are rejected by requireRole.
 app.post("/api/scores", requireRole("player", "admin"), async (req, res, next) => {
   try {
     const body = getObjectBody(req);
@@ -374,6 +378,7 @@ app.post("/api/scores", requireRole("player", "admin"), async (req, res, next) =
   }
 });
 
+// The leaderboard is public; it only displays persisted authenticated scores.
 app.get("/api/leaderboard", async (_req, res, next) => {
   try {
     // Leaderboard logic: return each user's best score per level. A score is

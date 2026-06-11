@@ -95,3 +95,47 @@ Add:
 - package.json scripts: dev and start.
 
 Keep code simple, reliable, and demo-ready.
+---------------------------------------------
+task-2-prompt-2
+Build the frontend only for Task 2.
+
+Project location:
+`task2-multiuser/frontend`
+
+Create:
+- index.html
+- app.js
+- styles.css
+
+Backend API:
+`http://localhost:4000/api`
+
+Use:
+- Plain HTML
+- CSS
+- Vanilla JavaScript
+- fetch with `credentials: "include"`
+
+Features:
+- Landing page shows leaderboard.
+- Show available levels.
+- Anonymous users see register and login forms.
+- Logged-in users see username, role, and logout button.
+- Players/admins can select a level and play Sokoban.
+- Reuse Task 1 Sokoban logic.
+- Submit score to backend when level is completed.
+- Refresh leaderboard after score submission.
+- Admin panel visible only when role is admin.
+- Admin can create a level using:
+  - level name input
+  - JSON grid textarea
+- Refresh level list after creating a level.
+
+UI:
+- Simple dashboard.
+- Sections: Auth, Leaderboard, Levels, Game, Admin Panel.
+- Clear success and error messages.
+- Suitable for screencast demo.
+
+Keep code small, readable, and directly connected to the backend endpoints.
+(steered prompt)-> run the backend, and use node server instead of python
