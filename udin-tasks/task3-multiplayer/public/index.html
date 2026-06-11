@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>15-Second Tap Sprint</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <p class="eyebrow">Multiplayer Socket.io Game</p>
+        <h1>15-Second Tap Sprint</h1>
+        <p class="subhead">Join the shared room, wait for at least two players, then hammer Space or the tap button when the server clock starts.</p>
+      </section>
+
+      <section id="joinPanel" class="panel">
+        <h2>Join Game</h2>
+        <form id="joinForm" class="join-form">
+          <label for="nameInput">Display name</label>
+          <div class="join-row">
+            <input id="nameInput" name="name" maxlength="24" autocomplete="nickname" placeholder="Your name" required />
+            <button type="submit">Join</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="gamePanel" class="game-grid hidden">
+        <div class="panel status-panel">
+          <div class="status-row">
+            <div>
+              <p class="eyebrow">Status</p>
+              <h2 id="stateTitle">Waiting room</h2>
+            </div>
+            <button id="startButton" type="button" disabled>Start Game</button>
+          </div>
+          <p id="statusMessage" class="status-message">Waiting for players to join.</p>
+
+          <div class="timer">
+            <span id="timerLabel">Countdown</span>
+            <strong id="timerValue">--</strong>
+          </div>
+
+          <button id="tapButton" class="tap-button" type="button" disabled>Tap</button>
+
+          <div class="personal-score">
+            <span>Your taps</span>
+            <strong id="personalCount">0</strong>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Connected Players</h2>
+          <ul id="playersList" class="list empty-list">
+            <li>No players yet.</li>
+          </ul>
+        </div>
+
+        <div class="panel">
+          <h2>Live Leaderboard</h2>
+          <ol id="leaderboardList" class="list leaderboard empty-list">
+            <li>Scores appear when the round starts.</li>
+          </ol>
+        </div>
+
+        <div id="resultsPanel" class="panel results-panel hidden">
+          <h2>Final Results</h2>
+          <p id="winnerText" class="winner-text">Winner will appear here.</p>
+          <ol id="resultsList" class="list leaderboard empty-list">
+            <li>No results yet.</li>
+          </ol>
+        </div>
+      </section>
+
+      <p id="errorMessage" class="error-message" role="alert"></p>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>
